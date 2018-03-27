@@ -52,7 +52,11 @@ TARGET="$HOME/.local/share/nautilus/scripts/"
     exit 2
 }
 
-FILE='nautilus-seafile-share-link'
-install --mode=555 "$FILE" "$TARGET" && {
-    echo "$FILE installed for $USER"
-}
+FILES='nautilus-seafile-share-link nautilus-seafile-share-link-10days nautilus-seafile-share-link-pw'
+for FILE in $FILES
+do
+    install --mode=555 "$FILE" "$TARGET" && {
+        echo "$FILE installed for $USER"
+    }
+done
+

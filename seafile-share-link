@@ -5,14 +5,41 @@
 #
 # Anders Bandholm, july 2015
 
+# parse args
+for i in "$@"
+do
+case $i in
+    -s=*|--seafile-data-path=*)
+    SEAFILE_CONF_PARAM="${i#*=}"
+    shift # past argument=value
+    ;;
+    -p=*|--password=*)
+    SHARE_PASSWORD="${i#*=}"
+    shift # past argument=value
+    ;;
+    -e=*|--expire=*)
+    SHARE_EXPIRE="${i#*=}"
+    shift # past argument=value
+    ;;
+    *)
+          # unknown option
+    ;;
+esac
+done
 
-if [ -d ~/Seafile/.seafile-data ]
+if [ ! -z "$SEAFILE_CONF_PARAM" ] && [ -d "$SEAFILE_CONF_PARAM" ]
+then
+	SEAFILE_CONF="$SEAFILE_CONF_PARAM"
+elif [ -d ~/Seafile/.seafile-data ]
 then
     SEAFILE_CONF=~/Seafile/.seafile-data
 elif [ `which locate` ]
 then
     # if not in default place, search with locate (if locate is available)
     SEAFILE_CONF=$(locate /*/.seafile-data)
+elif [ `which find`]
+then
+    SEAFILE_CONF=$(find $HOME -type d -name '.seafile-data' | head -n 1)
 fi
 if [ -z "$SEAFILE_CONF" ] || [ ! -d "$SEAFILE_CONF" ]
 then
@@ -30,7 +57,7 @@ function sql_lookup {
 
 if [ -z "$1" -o "$2" ]
 then
-    echo "Usage: `basename $0` filename|dirname" >&2
+    echo "Usage: `basename $0` [-e=expire-in-days] [-p=password] filename|dirname" >&2
     exit 1
 fi
 
@@ -96,7 +123,19 @@ PING=$(curl --silent "$URL"/api2/ping/)
 PING=$(curl --silent -H "Authorization: Token $TOKEN" "$URL"/api2/auth/ping/)
 [ "$PING" != '"pong"' ] && { echo "Auth failed -- token seems wrong" >&2; exit 5; }
 
-curl -i --silent -X PUT -d "type=$FILE_OR_DIR&p=$DIR_INSIDE_REPO/$FILE_NAME" \
+SHARE_PASSWORD_PARAM=""
+if [ ! -z "$SHARE_PASSWORD" ] && [ ${#SHARE_PASSWORD} -gt 7 ]; then
+    SHARE_PASSWORD_PARAM="&password=$SHARE_PASSWORD"
+else 
+   echo "WARN: password needs to be at least 8 chars long; ignored parameter"
+fi
+
+SHARE_EXPIRE_PARAM=""
+if [ ! -z "$SHARE_EXPIRE" ]; then
+    SHARE_EXPIRE_PARAM="&expire=$SHARE_EXPIRE"
+fi
+
+curl -i --silent -X PUT -d "type=$FILE_OR_DIR$SHARE_PASSWORD_PARAM$SHARE_EXPIRE_PARAM&p=$DIR_INSIDE_REPO/$FILE_NAME" \
     -H "Authorization: Token $TOKEN" -H 'Accept: application/json; indent=4' \
     "$URL"/api2/repos/$REPO/file/shared-link/ |
 	tr -d '\r' |

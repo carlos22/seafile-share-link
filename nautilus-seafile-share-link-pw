@@ -1,11 +1,15 @@
 #!/bin/bash
 
+DAYS=10
+
 for arg
 do
-    OUT=`seafile-share-link "$arg" 2>&1`
+    PW=$(pwgen 8 1)
+    OUT=`seafile-share-link -e=$DAYS -p=$PW "$arg" 2>&1`
     if [ "$?" -eq 0 ]
     then
 	OUT=$(sed 's#\(http[^  ]*\)#\n<a href="&">&</a>#' <<< $OUT)
+        OUT="$OUT\nValid for $DAYS days\nPassword: $PW"
 	zenity --info --title="Share link" --width 350 --text="$OUT"
     else
 	zenity --error --title="Share link" --text="$OUT"
