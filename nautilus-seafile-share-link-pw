@@ -6,12 +6,17 @@ for arg
 do
     PW=$(pwgen 8 1)
     OUT=`seafile-share-link -e=$DAYS -p=$PW "$arg" 2>&1`
-    if [ "$?" -eq 0 ]
+    RETCODE="$?"
+    if [ "$RETCODE" -eq 0 ] || [ "$RETCODE" -eq 1 ]
     then
-	OUT=$(sed 's#\(http[^  ]*\)#\n<a href="&">&</a>#' <<< $OUT)
-        OUT="$OUT\nValid for $DAYS days\nPassword: $PW"
-	zenity --info --title="Share link" --width 350 --text="$OUT"
+        OUT=$(sed 's#\(http[^  ]*\)#\n<a href="&">&</a>#' <<< $OUT)
+        if [ "$RETCODE" -eq 1 ]; then
+            OUT="$OUT\nThis file was already shared. Share settings may be different (pw and expire)."
+        else
+            OUT="$OUT\nValid for $DAYS days\nPassword: $PW"
+        fi
+        zenity --info --title="Share link" --width 350 --text="$OUT"
     else
-	zenity --error --title="Share link" --text="$OUT"
+        zenity --error --title="Share link" --text="$OUT"
     fi
 done

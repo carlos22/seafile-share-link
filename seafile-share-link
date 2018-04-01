@@ -124,16 +124,26 @@ PING=$(curl --silent -H "Authorization: Token $TOKEN" "$URL"/api2/auth/ping/)
 [ "$PING" != '"pong"' ] && { echo "Auth failed -- token seems wrong" >&2; exit 5; }
 
 SHARE_PASSWORD_PARAM=""
-if [ ! -z "$SHARE_PASSWORD" ] && [ ${#SHARE_PASSWORD} -gt 7 ]; then
-    SHARE_PASSWORD_PARAM="&password=$SHARE_PASSWORD"
-else 
-   echo "WARN: password needs to be at least 8 chars long; ignored parameter"
+if [ ! -z "$SHARE_PASSWORD" ]; then
+    if [ ${#SHARE_PASSWORD} -lt 8 ]; then
+        echo "WARN: password needs to be at least 8 chars long; ignored parameter" 
+    else 
+        SHARE_PASSWORD_PARAM="&password=$SHARE_PASSWORD"
+    fi
 fi
 
 SHARE_EXPIRE_PARAM=""
 if [ ! -z "$SHARE_EXPIRE" ]; then
     SHARE_EXPIRE_PARAM="&expire=$SHARE_EXPIRE"
 fi
+
+CURRENT_SHARE_JSON=$(curl --silent -H "Authorization: Token $TOKEN" -H 'Accept: application/json; indent=4' "$URL/api/v2.1/share-links/?repo_id=$REPO&path=$DIR_INSIDE_REPO/$FILE_NAME")
+
+if [ "${CURRENT_SHARE_JSON}" != "[]" ]; then
+    SHARE_LINK=$(echo $CURRENT_SHARE_JSON | jq --raw-output '.[0].link')
+    echo "Share-link found: $SHARE_LINK"
+    exit 1
+else
 
 curl -i --silent -X PUT -d "type=$FILE_OR_DIR$SHARE_PASSWORD_PARAM$SHARE_EXPIRE_PARAM&p=$DIR_INSIDE_REPO/$FILE_NAME" \
     -H "Authorization: Token $TOKEN" -H 'Accept: application/json; indent=4' \
@@ -152,9 +162,10 @@ curl -i --silent -X PUT -d "type=$FILE_OR_DIR$SHARE_PASSWORD_PARAM$SHARE_EXPIRE_
 		if [ "$name" = 'Location:' ]
 		then
 		    echo "Share-link created at: $value"
-		    exit
+		    exit 0
 		fi
 	    done
 	    echo "Error: No Location-header in response from Seafile" >&2
 	    exit
 	)
+fi
